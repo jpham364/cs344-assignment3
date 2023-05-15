@@ -10,15 +10,22 @@
 struct commandPrompt{
 
 	char *command;
-	char **arg;
+	// following 2.5 lecture
+	char *arg[512];
 	char *input;
 	char *output;
-	char *exp;
+	char *background;
 
 };
 
 
 struct commandPrompt *createPrompt(char* lineEntered){
+
+
+	int numArgs = 0; // This variable counts for the amount of arguments processed
+	int inputChar = 0; // this variable detects if there is an input symbol
+	int outputChar = 0; // this variable detects if there is an output symbol
+	int backgroundChar = 0; // this variable detects if there is an background symbol
 
 	// Allocate memory for processing the current prompt
 	struct commandPrompt *currPrompt = malloc(sizeof(struct commandPrompt));
@@ -31,10 +38,8 @@ struct commandPrompt *createPrompt(char* lineEntered){
     currPrompt->command = calloc(strlen(token) + 1, sizeof(char));
     strcpy(currPrompt->command, token);
 
-    // https://www.ibm.com/docs/en/i/7.4?topic=functions-strtok-tokenize-string
-    // 2nd token is arguments, go through potential 512 arguments
-    currPrompt->arg = malloc(512 * sizeof(char*));
 
+    // 2nd token is arguments, go through potential 512 arguments
     int i = 0;
     for (i = 0; i < 512; i++){
 
@@ -51,23 +56,40 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    }
 
 	    else{
-	    	// printf("%s\n", token);
+	    	
+	    	// causes seg fault
+	    	// strcpy(currPrompt->arg[i], token);
+	    	numArgs++;
+	    	currPrompt->arg[i] = token;
 
-	    	currPrompt->arg[i] = calloc(strlen(token) + 1, sizeof(char));
-	    	strcpy(currPrompt->arg[i], token);
 	    }	    
 	
 	}
 
 
-	for (i = 0; i < 512; i++){
 
+
+
+	// test print
+	for (i = 0; i < numArgs; i++){
 
 		if(currPrompt->arg[i] != NULL){
 
 			printf("%s\n", currPrompt->arg[i]);
+
+
 		}
 	}
+
+	
+
+	
+
+	
+			
+
+		
+	
 
 
 
@@ -114,6 +136,18 @@ int main() {
 
 		// free memory
 		free(lineEntered);
+
+		// int i = 0;
+		// for (i = 0; i < 512; i++){
+
+		// 	if(newPrompt->arg[i] != NULL){
+		// 		free(newPrompt->arg[i]);
+		// 	}	
+			
+
+		// }
+
+
 		free(newPrompt->command);
 		free(newPrompt);
 
