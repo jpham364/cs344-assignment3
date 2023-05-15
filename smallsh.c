@@ -46,6 +46,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
     	// The arguments are separated by spaces or \n
     	token = strtok_r(NULL, " \n", &saveptr);
 
+    	// This means we reached the end of the line prompt
 	    if (token == NULL){
 	    	break;
 	    }
@@ -56,9 +57,6 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    }
 
 	    else{
-	    	
-	    	// causes seg fault
-	    	// strcpy(currPrompt->arg[i], token);
 	    	numArgs++;
 	    	currPrompt->arg[i] = token;
 
@@ -80,17 +78,6 @@ struct commandPrompt *createPrompt(char* lineEntered){
 
 		}
 	}
-
-	
-
-	
-
-	
-			
-
-		
-	
-
 
 
     
@@ -136,18 +123,6 @@ int main() {
 
 		// free memory
 		free(lineEntered);
-
-		// int i = 0;
-		// for (i = 0; i < 512; i++){
-
-		// 	if(newPrompt->arg[i] != NULL){
-		// 		free(newPrompt->arg[i]);
-		// 	}	
-			
-
-		// }
-
-
 		free(newPrompt->command);
 		free(newPrompt);
 
