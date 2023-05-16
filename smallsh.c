@@ -15,17 +15,17 @@ struct commandPrompt{
 	char *input;
 	char *output;
 	int background;
+	int numArgs;
 
 };
 
 
 struct commandPrompt *createPrompt(char* lineEntered){
 
-
 	// Allocate memory for processing the current prompt
 	struct commandPrompt *currPrompt = malloc(sizeof(struct commandPrompt));
 
-	int numArgs = 0; // This variable counts for the amount of arguments processed
+	// int numArgs = 0; // This variable counts for the amount of arguments processed
 	int inputChar = 0; // this variable detects if there is an input symbol
 	int outputChar = 0; // this variable detects if there is an output symbol
 
@@ -33,6 +33,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	currPrompt->background = 0; // this variable detects if there is an background symbol
 	currPrompt->input = NULL;
 	currPrompt->output = NULL;
+	currPrompt->numArgs = 0;
 
 
 	// check for background &
@@ -77,13 +78,12 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    }
 
 	    else{
-	    	numArgs++;
+	    	currPrompt->numArgs++;
 	    	currPrompt->arg[i] = token;
 
 	    }	    
 	
 	}
-
 
 	// third and fourth token is input/output file 
 
@@ -103,8 +103,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
     	if(token != NULL){
 
 	    	if(strcmp(token, ">") == 0){
-
-	    		printf("%s\n", token);
+	    		
 	    		token = strtok_r(NULL, " ", &saveptr);
 				currPrompt->output = calloc(strlen(token) + 1, sizeof(char));
 	    		strcpy(currPrompt->output, token);
@@ -135,36 +134,11 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    }
 
 	}
-
-	// test print
-
-	// command
-	printf("command: %s\n", currPrompt->command);
-
-	// loop through args
-	for (i = 0; i < numArgs; i++){
-
-		if(currPrompt->arg[i] != NULL){
-
-			printf("arg %d: %s\n", i, currPrompt->arg[i]);
-
-		}
-	}
-
-	if(currPrompt->input != NULL){
-		printf("input: %s\n", currPrompt->input);
-	}
-
-	if(currPrompt->output != NULL){
-
-		printf("output: %s\n", currPrompt->output);
-	}
-
-	printf("background: %d\n", currPrompt->background);
-
     
 	return currPrompt;
 }
+
+
 
 
 int main() {
@@ -206,6 +180,43 @@ int main() {
 		struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
 		inputType = 0;
+
+
+
+
+
+
+
+
+
+
+
+		// test print
+		// command
+		printf("command: %s\n", newPrompt->command);
+
+		// loop through args
+		int i;
+		for (i = 0; i < newPrompt->numArgs; i++){
+
+			if(newPrompt->arg[i] != NULL){
+
+				printf("arg %d: %s\n", i, newPrompt->arg[i]);
+
+			}
+
+		}
+
+		if(newPrompt->input != NULL){
+			printf("input: %s\n", newPrompt->input);
+		}
+
+		if(newPrompt->output != NULL){
+
+			printf("output: %s\n", newPrompt->output);
+		}
+
+		printf("background: %d\n", newPrompt->background);
 
 		// free memory
 		free(lineEntered);
