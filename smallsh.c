@@ -19,7 +19,6 @@ struct commandPrompt{
 
 };
 
-
 struct commandPrompt *createPrompt(char* lineEntered){
 
 	// Allocate memory for processing the current prompt
@@ -34,7 +33,6 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	currPrompt->input = NULL;
 	currPrompt->output = NULL;
 	currPrompt->numArgs = 0;
-
 
 	// check for background &
 	char backgroundCheck = lineEntered[strlen(lineEntered) - 1];
@@ -103,7 +101,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
     	if(token != NULL){
 
 	    	if(strcmp(token, ">") == 0){
-	    		
+
 	    		token = strtok_r(NULL, " ", &saveptr);
 				currPrompt->output = calloc(strlen(token) + 1, sizeof(char));
 	    		strcpy(currPrompt->output, token);
@@ -146,7 +144,6 @@ int main() {
 
 	int inputType = 1;
 
-
 	while(inputType == 1){
 
 		// Seen from 2.4 File Access in C
@@ -179,7 +176,7 @@ int main() {
 		// fill the prompt struct
 		struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
-		inputType = 0;
+		
 
 
 
@@ -230,6 +227,9 @@ int main() {
 			free(newPrompt->output);
 		}
 		free(newPrompt);
+
+		// end for now
+		inputType = 0;
 
 	}
 
