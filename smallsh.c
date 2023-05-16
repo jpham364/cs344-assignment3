@@ -14,7 +14,7 @@ struct commandPrompt{
 	char *arg[512];
 	char *input;
 	char *output;
-	char *background;
+	int background;
 
 };
 
@@ -22,13 +22,21 @@ struct commandPrompt{
 struct commandPrompt *createPrompt(char* lineEntered){
 
 
+	// Allocate memory for processing the current prompt
+	struct commandPrompt *currPrompt = malloc(sizeof(struct commandPrompt));
+
 	int numArgs = 0; // This variable counts for the amount of arguments processed
 	int inputChar = 0; // this variable detects if there is an input symbol
 	int outputChar = 0; // this variable detects if there is an output symbol
-	int backgroundChar = 0; // this variable detects if there is an background symbol
+	currPrompt->background = 0; // this variable detects if there is an background symbol
 
-	// Allocate memory for processing the current prompt
-	struct commandPrompt *currPrompt = malloc(sizeof(struct commandPrompt));
+
+	// check for background &
+	char backgroundCheck = lineEntered[strlen(lineEntered) - 2];
+
+	if (backgroundCheck == '&'){
+		currPrompt->background = 1;
+	}
 
 	// to use with strtok_r, used for the main line
     char *saveptr;
@@ -37,7 +45,6 @@ struct commandPrompt *createPrompt(char* lineEntered){
     char *token = strtok_r(lineEntered, " ", &saveptr);
     currPrompt->command = calloc(strlen(token) + 1, sizeof(char));
     strcpy(currPrompt->command, token);
-
 
     // 2nd token is arguments, go through potential 512 arguments
     int i = 0;
@@ -51,8 +58,17 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    	break;
 	    }
 
-	    
-	    if (strcmp(token, "<") == 0){
+	    else if (strcmp(token, "<") == 0){
+	    	inputChar = 1;
+	    	break;
+	    }
+
+	    else if (strcmp(token, ">") == 0){
+	    	outputChar = 1;
+	    	break;
+	    }
+
+	    else if(strcmp(token, "&") == 0){
 	    	break;
 	    }
 
@@ -69,15 +85,22 @@ struct commandPrompt *createPrompt(char* lineEntered){
 
 
 	// test print
+
+	// command
+	printf("command: %s\n", currPrompt->command);
+
+	// loop through args
 	for (i = 0; i < numArgs; i++){
 
 		if(currPrompt->arg[i] != NULL){
 
-			printf("%s\n", currPrompt->arg[i]);
+			printf("arg %d: %s\n", i, currPrompt->arg[i]);
 
 
 		}
 	}
+
+	printf("background: %d\n", currPrompt->background);
 
 
     
