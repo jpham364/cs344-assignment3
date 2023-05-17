@@ -53,10 +53,11 @@ struct commandPrompt *createPrompt(char* lineEntered){
 				i++;
 				lineEntered[i] = 'i';
 
-				int testPID = 179;
+				// get pid
+				int insertPID = getpid();
 
 				// This results in a %i, in which we can insert a variable inside through sprintf
-				sprintf(pidString, lineEntered, testPID);
+				sprintf(pidString, lineEntered, insertPID);
 
 				// transfer the pidString back into lineEntered
 				strcpy(lineEntered, pidString);
