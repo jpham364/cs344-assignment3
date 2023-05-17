@@ -170,6 +170,49 @@ struct commandPrompt *createPrompt(char* lineEntered){
 
 
 
+int processPrompt(struct commandPrompt *currPrompt){
+
+	// First we check for built-in commands
+
+	// exit
+	if (strcmp(currPrompt->command, "exit") == 0){
+		return 0;
+	}
+
+	// cd
+	if(strcmp(currPrompt->command, "cd") == 0){
+
+		// Using this resrouce to get to home
+		// https://stackoverflow.com/questions/9493234/chdir-to-home-directory
+		if(currPrompt->numArgs == 0){
+
+			char* HOME = getenv("HOME");
+
+			chdir(HOME);
+
+			char testDir[512];
+			getcwd(testDir, 512);
+			printf("%s\n", testDir);
+		}
+
+		else if (currPrompt->numArgs > 0){
+			chdir(currPrompt->arg[0]);
+
+			char testDir[512];
+			getcwd(testDir, 512);
+			printf("%s\n", testDir);
+
+		}
+	}
+
+
+
+	// status 
+
+	return 1;
+}
+
+
 
 int main() {
 
@@ -211,35 +254,36 @@ int main() {
 		struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
 		
+		inputType = processPrompt(newPrompt);
 
-
+		// printf("%d\n", inputType);
 
 		// test print
 		// command
-		printf("command: %s\n", newPrompt->command);
+		// printf("command: %s\n", newPrompt->command);
 
-		// loop through args
-		int i;
-		for (i = 0; i < newPrompt->numArgs; i++){
+		// // loop through args
+		// int i;
+		// for (i = 0; i < newPrompt->numArgs; i++){
 
-			if(newPrompt->arg[i] != NULL){
+		// 	if(newPrompt->arg[i] != NULL){
 
-				printf("arg %d: %s\n", i, newPrompt->arg[i]);
+		// 		printf("arg %d: %s\n", i, newPrompt->arg[i]);
 
-			}
+		// 	}
 
-		}
+		// }
 
-		if(newPrompt->input != NULL){
-			printf("input: %s\n", newPrompt->input);
-		}
+		// if(newPrompt->input != NULL){
+		// 	printf("input: %s\n", newPrompt->input);
+		// }
 
-		if(newPrompt->output != NULL){
+		// if(newPrompt->output != NULL){
 
-			printf("output: %s\n", newPrompt->output);
-		}
+		// 	printf("output: %s\n", newPrompt->output);
+		// }
 
-		printf("background: %d\n", newPrompt->background);
+		// printf("background: %d\n", newPrompt->background);
 
 		// free memory
 		free(lineEntered);
@@ -255,7 +299,7 @@ int main() {
 		free(newPrompt);
 
 		// end for now
-		inputType = 0;
+		// inputType = 0;
 
 	}
 
