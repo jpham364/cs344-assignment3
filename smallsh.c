@@ -180,7 +180,7 @@ int processPrompt(struct commandPrompt *currPrompt){
 	}
 
 	// cd
-	if(strcmp(currPrompt->command, "cd") == 0){
+	else if(strcmp(currPrompt->command, "cd") == 0){
 
 		// Using this resrouce to get to home
 		// https://stackoverflow.com/questions/9493234/chdir-to-home-directory
@@ -190,6 +190,7 @@ int processPrompt(struct commandPrompt *currPrompt){
 
 			chdir(HOME);
 
+			// test print
 			char testDir[512];
 			getcwd(testDir, 512);
 			printf("%s\n", testDir);
@@ -198,6 +199,7 @@ int processPrompt(struct commandPrompt *currPrompt){
 		else if (currPrompt->numArgs > 0){
 			chdir(currPrompt->arg[0]);
 
+			// test print
 			char testDir[512];
 			getcwd(testDir, 512);
 			printf("%s\n", testDir);
@@ -205,6 +207,89 @@ int processPrompt(struct commandPrompt *currPrompt){
 		}
 	}
 
+
+	// Will insert status after background is figured out
+
+	// if its none of these, then we need to execvp, fork, and waitpid 
+	else{
+
+		// From 3.1 Processes Lecture 
+		pid_t spawnPID = -5;
+		int childExitStatus = -5;
+
+		spawnPID = fork();
+		
+		switch(spawnPID){
+
+			// when fork fails, it returns -1
+			case -1: {
+				perror("Error! Fork() error!\n");
+				exit(1);
+				break;
+			}
+
+			// when fork succeses, returns 0, child will process
+			case 0: {
+
+				// this is the "actual" length of the command line input
+				// command + arguments
+				int commandPlusArg = currPrompt->numArgs + 1;
+
+				// create an array of pointer strings that is equal
+				// to the command line input
+				char* args[commandPlusArg];
+
+				int i = 0;
+
+				for (i = 0; i < commandPlusArg + 1; i++){
+
+					// get that first command and append it to the beginninng
+					if (i == 0){
+
+						args[i] = currPrompt->command;
+
+					}
+					else if(i == (currPrompt->numArgs) + 1){
+
+						args[i] = NULL;
+
+					}
+
+					else{
+
+						if(currPrompt->numArgs == 0){
+							args[i] = NULL;
+							break;
+						}
+
+						else{
+							args[i] = currPrompt->arg[i-1];
+						}
+
+					}
+				}
+
+
+				execvp(args[0], args);
+			
+				exit(2);
+				break;
+
+			}
+
+
+			// this will be the parent running
+			default: {
+
+				spawnPID = waitpid(spawnPID, &childExitStatus, 0);
+				break;
+
+			}	
+
+		}
+
+
+	}
 
 
 	// status 
@@ -256,10 +341,9 @@ int main() {
 		
 		inputType = processPrompt(newPrompt);
 
-		// printf("%d\n", inputType);
 
-		// test print
-		// command
+		// // test print
+		// // command
 		// printf("command: %s\n", newPrompt->command);
 
 		// // loop through args
@@ -288,18 +372,13 @@ int main() {
 		// free memory
 		free(lineEntered);
 		free(newPrompt->command);
-
 		if (newPrompt->input != NULL){
 			free(newPrompt->input);
 		}
-
 		if (newPrompt->output != NULL){
 			free(newPrompt->output);
 		}
 		free(newPrompt);
-
-		// end for now
-		// inputType = 0;
 
 	}
 
