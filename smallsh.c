@@ -5,8 +5,6 @@
 
 #include <string.h>
 
-
-
 struct commandPrompt{
 
 	char *command;
@@ -24,7 +22,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	// Allocate memory for processing the current prompt
 	struct commandPrompt *currPrompt = malloc(sizeof(struct commandPrompt));
 
-	// int numArgs = 0; // This variable counts for the amount of arguments processed
+	int i = 0;
 	int inputChar = 0; // this variable detects if there is an input symbol
 	int outputChar = 0; // this variable detects if there is an output symbol
 
@@ -33,6 +31,42 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	currPrompt->input = NULL;
 	currPrompt->output = NULL;
 	currPrompt->numArgs = 0;
+
+	// Before we do anything, lets do PID expansion
+	
+	for(i = 0; i < strlen(lineEntered); i++){
+
+		// sees the first $
+		if(lineEntered[i] == '$'){
+
+			// check to see if there is sequential $
+			if(lineEntered[i + 1] == '$'){
+
+				// found $$! Lets malloc an empty string to be inserted later
+				char* pidString = malloc(2049 * sizeof(char));
+				memset(pidString, '\0',sizeof(pidString));
+
+				// first, replace the first character with %
+				lineEntered[i] = '%';
+
+				// then, replace the second character with i
+				i++;
+				lineEntered[i] = 'i';
+
+				int testPID = 179;
+
+				// This results in a %i, in which we can insert a variable inside through sprintf
+				sprintf(pidString, lineEntered, testPID);
+
+				// transfer the pidString back into lineEntered
+				strcpy(lineEntered, pidString);
+
+				// free it!
+				free(pidString);
+
+			}
+		}
+	}
 
 	// check for background &
 	char backgroundCheck = lineEntered[strlen(lineEntered) - 1];
@@ -50,7 +84,6 @@ struct commandPrompt *createPrompt(char* lineEntered){
     strcpy(currPrompt->command, token);
 
     // 2nd token is arguments, go through potential 512 arguments
-    int i = 0;
     for (i = 0; i < 512; i++){
 
     	// The arguments are separated by spaces or \n
@@ -107,9 +140,7 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    		strcpy(currPrompt->output, token);
 
 	    	}
-
 	    }
-
 	}
 
 	// if > came first (output)
@@ -160,7 +191,9 @@ int main() {
 		printf(": ");
 		fflush(stdout);
 
+		// get input
 		numCharsEntered = getline(&lineEntered, &bufferSize, stdin);
+		
 		// From 2.4 file access
 		numCharsEntered--;
 		lineEntered[numCharsEntered] = '\0';
@@ -177,14 +210,6 @@ int main() {
 		struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
 		
-
-
-
-
-
-
-
-
 
 
 
