@@ -270,7 +270,13 @@ int processPrompt(struct commandPrompt *currPrompt){
 				}
 
 
-				execvp(args[0], args);
+				// we need to edit these 
+				if (execvp(args[0], args) < 0){
+
+					perror("Exec failture!");
+					exit(1);
+
+				}
 			
 				exit(2);
 				break;
@@ -339,6 +345,7 @@ int main() {
 		struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
 		
+		
 		inputType = processPrompt(newPrompt);
 
 
@@ -370,6 +377,7 @@ int main() {
 		// printf("background: %d\n", newPrompt->background);
 
 		// free memory
+		
 		free(lineEntered);
 		free(newPrompt->command);
 		if (newPrompt->input != NULL){
