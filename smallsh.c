@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <fcntl.h>
 #include <string.h>
 
 struct commandPrompt{
@@ -231,6 +231,47 @@ int processPrompt(struct commandPrompt *currPrompt){
 			// when fork succeses, returns 0, child will process
 			case 0: {
 
+
+				// input/output redirection
+                // Following Exploration: Processes and I/O
+
+                // first, check for input redirection < 
+                int result = 0;
+                if(currPrompt->input != NULL){
+                    // open source file
+                    int sourceFD = open(currPrompt->input, O_RDONLY);
+                    if(sourceFD == -1){
+                        perror("source open()");
+                        exit(1);
+                    }
+
+                    // redirect stdin to source file
+                    result = dup2(sourceFD, 0);
+                    if(result == -1){
+                        perror("source dup2()");
+                        exit(2);
+                    }
+
+                }
+
+                // second, check for output redirection > 
+                if(currPrompt->output != NULL){
+
+                    int targetFD = open(currPrompt->output, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    if (targetFD == -1){
+                        perror("target open()");
+                        exit(1);
+                    }
+
+                    result = dup2(targetFD, 1); 
+
+                    if (result == -1){
+                        perror("target dup2()");
+                        exit(2);
+                    }
+
+                }
+
 				// this is the "actual" length of the command line input
 				// command + arguments
 				int commandPlusArg = currPrompt->numArgs + 1;
@@ -273,7 +314,7 @@ int processPrompt(struct commandPrompt *currPrompt){
 				// we need to edit these 
 				if (execvp(args[0], args) < 0){
 
-					perror("Exec failture!");
+					perror("Exec failture");
 					exit(1);
 
 				}
