@@ -5,6 +5,13 @@
 #include <fcntl.h>
 #include <string.h>
 
+
+// Using global variables for status 
+// Approved by Brewster!
+// https://edstem.org/us/courses/37585/discussion/3138126?answer=7185686
+int globalStatus = 0;
+
+
 struct commandPrompt{
 
 	char *command;
@@ -170,15 +177,36 @@ struct commandPrompt *createPrompt(char* lineEntered){
 
 
 
-int processPrompt(struct commandPrompt *currPrompt){
+int processPrompt(struct commandPrompt *currPrompt, int *pidArray){
+
+
+	// Received help from Patrick Iacob
+	// check for finished background processes, 
+	// int pid = waitpid(-1, &status_code, WNOHANG); // return any processes 
+	// do this in a do while loop until pid is greater than 0
+	
+	pid_t pidCheck;
+	int status_code;
+
+	do{
+
+		pidCheck = waitpid(-1, &status_code, WNOHANG);
+		
+		if(pidCheck > 0){
+			printf("background %i is done: exit value: %i\n", pidCheck, status_code);
+			fflush(stdout);
+		}
+		
+
+	}while (pidCheck > 0);
+
 
 	// First we check for built-in commands
-
 	// exit
 	if (strcmp(currPrompt->command, "exit") == 0){
 		return 0;
 	}
-
+	
 	// cd
 	else if(strcmp(currPrompt->command, "cd") == 0){
 
@@ -187,25 +215,37 @@ int processPrompt(struct commandPrompt *currPrompt){
 		if(currPrompt->numArgs == 0){
 
 			char* HOME = getenv("HOME");
-
 			chdir(HOME);
 
-			// test print
-			char testDir[512];
-			getcwd(testDir, 512);
-			printf("%s\n", testDir);
+			return 1;
+
+		
 		}
 
 		else if (currPrompt->numArgs > 0){
 			chdir(currPrompt->arg[0]);
 
-			// test print
-			char testDir[512];
-			getcwd(testDir, 512);
-			printf("%s\n", testDir);
+			return 1;
+
 
 		}
 	}
+
+	else if(strcmp(currPrompt->command, "status") == 0){
+
+
+
+		// Following exploration code;
+		if(WIFEXITED(globalStatus)){
+			printf("exit value %d\n", WEXITSTATUS(globalStatus));
+		}
+
+
+		// printf("exit value %d\n", globalStatus);
+		// fflush(stdout);
+		
+	}
+
 
 
 	// Will insert status after background is figured out
@@ -215,7 +255,7 @@ int processPrompt(struct commandPrompt *currPrompt){
 
 		// From 3.1 Processes Lecture 
 		pid_t spawnPID = -5;
-		int childExitStatus = -5;
+		// int childExitStatus = -5;
 
 		spawnPID = fork();
 		
@@ -223,7 +263,9 @@ int processPrompt(struct commandPrompt *currPrompt){
 
 			// when fork fails, it returns -1
 			case -1: {
-				perror("Error! Fork() error!\n");
+				perror(" Fork() error!\n");
+
+				
 				exit(1);
 				break;
 			}
@@ -231,16 +273,59 @@ int processPrompt(struct commandPrompt *currPrompt){
 			// when fork succeses, returns 0, child will process
 			case 0: {
 
+				int result = 0;
+				// check for background, then redirect to NULL
+
+				if(currPrompt->background == 1){
+
+					int sourceFD = open("/dev/null", O_RDONLY);
+                    if(sourceFD == -1){
+                        perror("source open()");
+                        
+                        exit(1);
+                        break;
+                    }
+
+                    // redirect stdin to source file
+                    result = dup2(sourceFD, 0);
+                    if(result == -1){
+                        perror("source dup2()");
+                        
+                        exit(2);
+                        break;
+
+                    }
+
+
+                    int targetFD = open("/dev/null", O_WRONLY, 0644);
+                    if (targetFD == -1){
+                        perror("target open()");
+                        
+                        exit(1);
+                        break;
+                    }
+
+                    // redirect stdout to source file
+                    result = dup2(targetFD, 1); 
+                    if (result == -1){
+                        perror("target dup2()");
+                        
+                        exit(2);
+                        break;
+                    }
+
+				}
+				
 
 				// input/output redirection
                 // Following Exploration: Processes and I/O
-
                 // first, check for input redirection < 
-                int result = 0;
+                
                 if(currPrompt->input != NULL){
                     // open source file
                     int sourceFD = open(currPrompt->input, O_RDONLY);
                     if(sourceFD == -1){
+                    	
                         perror("source open()");
                         exit(1);
                     }
@@ -248,9 +333,12 @@ int processPrompt(struct commandPrompt *currPrompt){
                     // redirect stdin to source file
                     result = dup2(sourceFD, 0);
                     if(result == -1){
+                    	
                         perror("source dup2()");
                         exit(2);
                     }
+
+                    fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
 
                 }
 
@@ -259,16 +347,22 @@ int processPrompt(struct commandPrompt *currPrompt){
 
                     int targetFD = open(currPrompt->output, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                     if (targetFD == -1){
+                       
                         perror("target open()");
+                        
                         exit(1);
                     }
 
+                    // redirect stdout to source file
                     result = dup2(targetFD, 1); 
-
                     if (result == -1){
+                       
                         perror("target dup2()");
+                        
                         exit(2);
                     }
+
+                    fcntl(targetFD, F_SETFD, FD_CLOEXEC);
 
                 }
 
@@ -311,13 +405,18 @@ int processPrompt(struct commandPrompt *currPrompt){
 				}
 
 
-				// we need to edit these 
+				// run by execvp
 				if (execvp(args[0], args) < 0){
 
-					perror("Exec failture");
+					
+					perror("Exec failure");
+					
 					exit(1);
 
 				}
+
+
+
 			
 				exit(2);
 				break;
@@ -325,11 +424,26 @@ int processPrompt(struct commandPrompt *currPrompt){
 			}
 
 
-			// this will be the parent running
+			// this will be the parent running, is the PID
 			default: {
 
-				spawnPID = waitpid(spawnPID, &childExitStatus, 0);
-				break;
+				if (currPrompt->background == 0){
+					spawnPID = waitpid(spawnPID, &globalStatus, 0);
+
+					break;
+				}
+
+				// What I did so far
+				// If there is a background indicator, no need to waitpid
+				// make sure 
+				// /dev/null
+				else if (currPrompt->background == 1){
+					
+					printf("background pid is %i\n", spawnPID);
+					fflush(stdout);
+
+					break;
+				}
 
 			}	
 
@@ -350,6 +464,8 @@ int main() {
 
 
 	int inputType = 1;
+
+	int pidArray[2000];
 
 	while(inputType == 1){
 
@@ -387,35 +503,8 @@ int main() {
 
 		
 		
-		inputType = processPrompt(newPrompt);
+		inputType = processPrompt(newPrompt, pidArray);
 
-
-		// // test print
-		// // command
-		// printf("command: %s\n", newPrompt->command);
-
-		// // loop through args
-		// int i;
-		// for (i = 0; i < newPrompt->numArgs; i++){
-
-		// 	if(newPrompt->arg[i] != NULL){
-
-		// 		printf("arg %d: %s\n", i, newPrompt->arg[i]);
-
-		// 	}
-
-		// }
-
-		// if(newPrompt->input != NULL){
-		// 	printf("input: %s\n", newPrompt->input);
-		// }
-
-		// if(newPrompt->output != NULL){
-
-		// 	printf("output: %s\n", newPrompt->output);
-		// }
-
-		// printf("background: %d\n", newPrompt->background);
 
 		// free memory
 		
