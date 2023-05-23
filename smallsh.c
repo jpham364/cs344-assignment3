@@ -19,6 +19,8 @@ int globalStatus = 0;
 int ignoreSIGTSTP = 0;
 
 
+// This struct holds each separate element of the 
+// command prompt
 struct commandPrompt{
 
 	char *command;
@@ -31,9 +33,12 @@ struct commandPrompt{
 
 };
 
-
+// This signal handler handles switching the global variable 
+// to either accept a background indicator or not
 void handle_SIGTSTP(int signo){
 	
+
+	// If the global varibale is toggled off, then turn it back on
 	if(ignoreSIGTSTP == 0){
 		char* message1 = "\nEntering foreground-only mode (& is now ignored)\n";
 		write(STDOUT_FILENO, message1, 50);
@@ -41,6 +46,7 @@ void handle_SIGTSTP(int signo){
 
 	}
 
+	// vice versa, if toggled on, turn it off
 	else if (ignoreSIGTSTP == 1){
 		char* message2 = "\nExiting foreground-only mode\n";
 		write(STDOUT_FILENO, message2, 30);
@@ -50,6 +56,9 @@ void handle_SIGTSTP(int signo){
 
 }
 
+// This struct function tokenizes the string that the user entered and then 
+// stores different elements such as commands, arguments, etc into their respective 
+// commandPrompt struct members. 
 struct commandPrompt *createPrompt(char* lineEntered){
 
 	// Allocate memory for processing the current prompt
@@ -102,6 +111,9 @@ struct commandPrompt *createPrompt(char* lineEntered){
 		}
 	}
 
+	// If the toggle for blocking SIGTSTP (background processes) is off, 
+	// Then we can check if the command is being run in the background. 
+	// Else, ignore it and run everything foreground
 	if(ignoreSIGTSTP == 0){
 
 		// check for background &
@@ -133,16 +145,19 @@ struct commandPrompt *createPrompt(char* lineEntered){
 	    	break;
 	    }
 
+	    // input
 	    else if (strcmp(token, "<") == 0){
 	    	inputChar = 1;
 	    	break;
 	    }
-	    	
+	    
+	    // output 
 	    else if (strcmp(token, ">") == 0){
 	    	outputChar = 1;
 	    	break;
 	    }
 
+	    // background
 	    else if(strcmp(token, "&") == 0){
 	    	break;
 	    }
@@ -208,38 +223,13 @@ struct commandPrompt *createPrompt(char* lineEntered){
 
 
 
-int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
+// This function processes the command prompt struct and will handle
+// background and foreground processes. The function will also take 
+// in an array of background PIDS to store, which will be used later to 
+// clean up zombie processes. 
+int processPrompt(struct commandPrompt *currPrompt, int storePIDS[]){
 
 	
-	// Received help from Patrick Iacob
-	// check for finished background processes, 
-	// int pid = waitpid(-1, &status_code, WNOHANG); // return any processes 
-	// do this in a do while loop until pid is greater than 0
-	
-	// pid_t pidCheck;
-	// int status_code;
-
-	// do{
-
-	// 	pidCheck = waitpid(-1, &status_code, WNOHANG);
-		
-	// 	if(pidCheck > 0){
-
-			
-	// 		if(status_code > 2){
-	// 			printf("background %i is done: terminated by signal %i\n", pidCheck, status_code);
-	// 			fflush(stdout);
-	// 			break;
-	// 		}
-
-	// 		printf("background %i is done: exit value: %i\n", pidCheck, status_code);
-	// 		fflush(stdout);				
-
-	// 	}
-
-	// }while (pidCheck > 0);
-
-
 	// First we check for built-in commands
 	// exit
 	if (strcmp(currPrompt->command, "exit") == 0){
@@ -257,10 +247,11 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 			chdir(HOME);
 
 			return 1;
-
 		
 		}
 
+		// else if there are anything in the arguments
+		// change the directory from the first argument.  
 		else if (currPrompt->numArgs > 0){
 			chdir(currPrompt->arg[0]);
 
@@ -270,15 +261,19 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 		}
 	}
 
+	// Check for status 
 	else if(strcmp(currPrompt->command, "status") == 0){
 
 
 		// Following Exploration: Process API - Monitoring Child Processes
+		// Using MACROS 
+		// Check if it exited normally
 		if(WIFEXITED(globalStatus)){
 			printf("exit value %d\n", WEXITSTATUS(globalStatus));
 			fflush(stdout);
 		}
 
+		// else, its probably terminated 
 		else{
 			printf("terminated by signal %d\n", WTERMSIG(globalStatus));
 			fflush(stdout);
@@ -289,8 +284,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 	}
 
 
-
-	// if its none of these, then we need to execvp, fork, and waitpid 
+	// if its none of these, then we need to execvp, fork, and waitpid foreground/background processes
 	else{
 
 		// From 3.1 Processes Lecture 
@@ -312,26 +306,20 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 			// when fork succeses, returns 0, child will process
 			case 0: {
 
-
+				// Exploration: Signal Handling API
 				// ignores any children for SIGTSTP
 				struct sigaction SIGTSTP_ignore = {0};
 				SIGTSTP_ignore.sa_handler = SIG_IGN;
 				sigaction(SIGTSTP, &SIGTSTP_ignore, NULL);
 
-				
-				// also from exploration
-				// Checks for background exists, and if we are not ignoring background
+				// Also from: Exploration: Signal Handling API
+				// Checks for background command exists, and if we are not ignoring background
 				if(currPrompt->background == 1 && ignoreSIGTSTP == 0){
-					
-					// From Exploration Code
-					// This ignores sigint for childeren in background
-					struct sigaction ignore_action2 = {0};
-
-					// ignore_action struct as SIG_IGN as its signal hanlder
+				
+					// If we are running in the background,
+					// Then we are ignoring SIGTSTP
+					struct sigaction ignore_action2 = {0};				
 					ignore_action2.sa_handler = SIG_IGN;
-
-					// Then register the ignore_action as handler for SIGINT
-					// This will be ignored in main shell
 					sigaction(SIGTSTP, &ignore_action2, NULL);
 
 
@@ -339,7 +327,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 
 				else{
 
-					// handles SIGINT
+					// handles SIGINT to do default action in children
 					struct sigaction default_action = {0};
 					default_action.sa_handler = SIG_DFL;
 					sigaction(SIGINT, &default_action, NULL);
@@ -350,10 +338,11 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 
 
 				int result = 0;
-				// check for background, then redirect to NULL
 
+				// check for background, then redirect to NULL
 				if(currPrompt->background == 1 && ignoreSIGTSTP == 0){
 
+					// Redirecting source (stdin)
 					int sourceFD = open("/dev/null", O_RDONLY);
                     if(sourceFD == -1){
                         perror("source open()");
@@ -362,7 +351,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
                         break;
                     }
 
-                    // redirect stdin to source file
+                   
                     result = dup2(sourceFD, 0);
                     if(result == -1){
                         perror("source dup2()");
@@ -372,7 +361,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 
                     }
 
-
+                    // Redirecting target (stdout)
                     int targetFD = open("/dev/null", O_WRONLY, 0644);
                     if (targetFD == -1){
                         perror("target open()");
@@ -381,7 +370,6 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
                         break;
                     }
 
-                    // redirect stdout to source file
                     result = dup2(targetFD, 1); 
                     if (result == -1){
                         perror("target dup2()");
@@ -393,7 +381,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 				}
 				
 
-				// input/output redirection
+				// input/output redirection for standard foreground processes
                 // Following Exploration: Processes and I/O
                 // first, check for input redirection < 
                 
@@ -414,6 +402,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
                         exit(2);
                     }
 
+                    // Close
                     fcntl(sourceFD, F_SETFD, FD_CLOEXEC);
 
                 }
@@ -438,6 +427,7 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
                         exit(2);
                     }
 
+                    // close
                     fcntl(targetFD, F_SETFD, FD_CLOEXEC);
 
                 }
@@ -460,6 +450,9 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 						args[i] = currPrompt->command;
 
 					}
+
+					// This means that we reached the end of the arguments, and assign 
+					// it to NULL to ensure formating for execvp()
 					else if(i == (currPrompt->numArgs) + 1){
 
 						args[i] = NULL;
@@ -468,11 +461,13 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 
 					else{
 
+						// This indicates that there are no arguments
 						if(currPrompt->numArgs == 0){
 							args[i] = NULL;
 							break;
 						}
 
+						// Else assign the argument to the array
 						else{
 							args[i] = currPrompt->arg[i-1];
 						}
@@ -501,11 +496,13 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 			// this will be the parent running, is the PID
 			default: {
 
+				// If this process is run in the foreground
 				if (currPrompt->background == 0){
 
-
+					// wait
 					spawnPID = waitpid(spawnPID, &globalStatus, 0);
 
+					// check if it got terminated by a signal 
 					if(!WIFEXITED(globalStatus)){
 						printf("terminated by signal %d\n", WTERMSIG(globalStatus));
 						fflush(stdout);
@@ -514,19 +511,25 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 					break;
 				}
 
-				// What I did so far
-				// If there is a background indicator, no need to waitpid
-				// make sure 
-				// /dev/null
+			
+				// If this process is run in the background
 				else if (currPrompt->background == 1){
 					
-
-					
+					// print background pid
 					printf("background pid is %i\n", spawnPID);
 					fflush(stdout);
-					
+				
+					// And then store the pid into the array to check for finished process later
+					int j = 0;
+					for(j = 0; j < 256; j++){
 
-					
+						if(storePIDS[j] == 0){
+							storePIDS[j] = spawnPID;
+							break;
+						}
+
+					}
+
 
 					break;
 				}
@@ -542,15 +545,11 @@ int processPrompt(struct commandPrompt *currPrompt, int pidArray[]){
 }
 
 
-
-
-
 int main() {
 
 	// From Exploration Code
 	// This ignores sigint in the main function parent
 	struct sigaction ignore_action = {0};
-
 	// ignore_action struct as SIG_IGN as its signal hanlder
 	ignore_action.sa_handler = SIG_IGN;
 	// Then register the ignore_action as handler for SIGINT
@@ -561,7 +560,6 @@ int main() {
 	// Handling SIGTSTP
 	// Fill out the SIGTSTP_action struct 
 	struct sigaction SIGTSTP_action = {0};
-	
 	SIGTSTP_action.sa_handler = handle_SIGTSTP;
 	sigfillset(&SIGTSTP_action.sa_mask);
 	// No flags set
@@ -569,12 +567,61 @@ int main() {
 	sigaction(SIGTSTP, &SIGTSTP_action, NULL);
 
 
+	// initialize the inputType variable
+	// Will handle reinput of prompts
 	int inputType = 1;
 
-	int pidArray[256];
+	int storePIDS[256];
+
+	int j = 0;
+	for (j = 0; j < 256; j++){
+		storePIDS[j] = 0;
+	}
+
 
 	while(inputType == 1){
 		
+
+		int i = 0;
+		int checkStatus;
+		pid_t checkPID;
+
+		// handling printing backgorund message
+
+		for (i = 0; i < 256; i++){
+
+			// find a background 
+			if(storePIDS[i] != 0){
+				
+
+				checkPID = waitpid(storePIDS[i], &checkStatus, WNOHANG);
+
+				if(checkPID > 0){
+				
+					// use macros inside
+					if(WIFEXITED(checkStatus)){
+
+						printf("background pid %d is done: exit value %d\n", checkPID, WEXITSTATUS(checkStatus));
+						fflush(stdout);
+						storePIDS[i] = 0;
+
+					}
+
+					if(WIFSIGNALED(checkStatus)){
+
+						printf("background pid %d is done: terminated by signal %d\n", checkPID, WTERMSIG(checkStatus));
+						fflush(stdout);
+						storePIDS[i] = 0;
+
+					}
+
+
+
+				}
+
+			}
+
+		}
 
 		// Seen from 2.4 File Access in C
 		size_t bufferSize = 2049; // 2048 + 1 for the null character
@@ -586,6 +633,7 @@ int main() {
 		// https://man7.org/linux/man-pages/man3/getline.3.html
 		lineEntered = malloc(bufferSize * sizeof(char));
 		memset(lineEntered, '\0',sizeof(lineEntered));
+
 
 		printf(": ");
 		fflush(stdout);
@@ -613,15 +661,9 @@ int main() {
 			// fill the prompt struct
 			struct commandPrompt *newPrompt = createPrompt(lineEntered);
 
-			
-			inputType = processPrompt(newPrompt, pidArray);
-
-
-
-			
+			inputType = processPrompt(newPrompt, storePIDS);
 
 			// free memory
-			
 			free(lineEntered);
 			free(newPrompt->command);
 			if (newPrompt->input != NULL){
@@ -638,8 +680,6 @@ int main() {
 
 	}
 
-
-	
 
 	return EXIT_SUCCESS;
 
